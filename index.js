@@ -8,6 +8,7 @@ import analyzeCommit from "./lib/analyze-commit.js";
 import compareReleaseTypes from "./lib/compare-release-types.js";
 import RELEASE_TYPES from "./lib/default-release-types.js";
 import DEFAULT_RELEASE_RULES from "./lib/default-release-rules.js";
+import preprocessCommitMessage from "./lib/preprocess-commit-message.js";
 
 const debug = debugFactory("semantic-release:commit-analyzer");
 
@@ -42,12 +43,20 @@ export async function analyzeCommits(pluginConfig, context) {
 
         return true;
       })
-      .map(({ message, ...commitProps }) => ({
-        rawMsg: message,
-        message,
-        ...commitProps,
-        ...parser.parse(message),
-      }))
+      .map(({ message, ...commitProps }) => {
+        // Preprocess the message to handle Azure DevOps squash commits
+        const processedMessage = preprocessCommitMessage(message);
+        debug("Original message: %s", message);
+        if (processedMessage !== message) {
+          debug("Processed message: %s", processedMessage);
+        }
+        return {
+          rawMsg: message,
+          message: processedMessage,
+          ...commitProps,
+          ...parser.parse(processedMessage),
+        };
+      })
   );
 
   for (const { rawMsg, ...commit } of filteredCommits) {
